@@ -21,13 +21,20 @@ namespace Server
         private static WebSocket Player1;
         private static WebSocket Player2;
 
+        private static bool P1ready;
+        private static bool P2ready;
+
         //le info dei 2 pokemon
         private static Pokemon jsonP1 = new Pokemon();
         private static Pokemon jsonP2 = new Pokemon();
 
+        private static int Turno;
+        private static Random rnd = new Random();
+
+        private static bool statoPartita;
 
         /// <summary>
-        /// GESTIRE System.IO.IOException
+        /// GESTIRE System.IO.IOException per lo scollegamento di un client o crash?
         /// </summary>
 
         protected override void OnOpen()
@@ -58,19 +65,44 @@ namespace Server
                 comunicazione.clientID = count+1;
 
                 if (count == 0)
+                {
                     comunicazione.info = "In attesa del 2° Giocatore (1/2)";
+                    comunicazione.readyEnabled = false;
+
+                } 
+                    
                 if (count == 1)
-                    comunicazione.info = "Giocatori Collegati (2/2)\nScegliere il proprio pokemon";
+                {
+                    comunicazione.info = "Giocatori Collegati (2/2)\nScegliere il proprio pokemon\n";
+                    comunicazione.readyEnabled = true;
+                    comunicazione.chatEnabled = true;
 
+                }    
+                    
                 comunicazione.method = "InfoConnessione";
-                string JSONoutput = JsonConvert.SerializeObject(comunicazione);
 
+                string JSONoutput = JsonConvert.SerializeObject(comunicazione);
                 Sessions.Broadcast(JSONoutput);
-            }
+            }    
         }
         protected override void OnMessage(MessageEventArgs e)
         {
             AnalizzaJson(e);
+        }
+
+        private void ResetPartita()
+        {
+            statoPartita = false;
+            P1ready = false;
+            P2ready = false;
+
+            Comunicazione comunicazione = new Comunicazione(); //info comunicazione
+
+            comunicazione.method = "InfoConnessione";
+            comunicazione.readyEnabled = true;
+
+            string JSONoutput = JsonConvert.SerializeObject(comunicazione);
+            Sessions.Broadcast(JSONoutput);
         }
 
         private void AnalizzaJson(MessageEventArgs e)
@@ -85,16 +117,40 @@ namespace Server
 
             if (comunicazione.method == "SceltaPokemon")
             {
+                if(statoPartita==true)// vuol dire che sonon nella partita numero 2
+                {
+                    ResetPartita();
+                }
+
                 if (Context.WebSocket == Player1)
                 {
                     _clientSockets[1].Send(e.Data);
                     jsonP1 = comunicazione.mypokemon;
+                    P1ready = true;
                 }
                 else
                 {
                     _clientSockets[0].Send(e.Data);
                     jsonP2 = comunicazione.mypokemon;
+                    P2ready = true;
                 }
+
+                if (P1ready == true && P2ready == true)
+                {
+                    Comunicazione newcomunicazione = new Comunicazione(); //info comunicazione
+
+                    newcomunicazione.statoPartita = true;
+                    statoPartita = true;
+
+                    //Genero random il giocatore che comincia per primo (1 o 2)
+                    Turno = rnd.Next(1, 3);
+                    newcomunicazione.Turno = Turno;
+
+                    newcomunicazione.method = "InfoConnessione";
+                    Sessions.Broadcast(JsonConvert.SerializeObject(newcomunicazione));
+                }
+
+
             }
 
             //scambio i messaggi della chat tra i giocatori
@@ -117,6 +173,7 @@ namespace Server
 
                 int newHp1;
                 int newHp2;
+                string JSONoutput;
 
                 //invio ad un client i messaggi dell'altro
                 if (Context.WebSocket == _clientSockets[0])
@@ -131,9 +188,7 @@ namespace Server
 
                     jsonP2.hp = newHp2;//aggiorno la vita del pokemon nel json del server
 
-                    string JSONoutput = JsonConvert.SerializeObject(Turno);
-
-                    Sessions.Broadcast(JSONoutput);
+                    Turno.Turno = 2;
                 }
                 else
                 {
@@ -147,10 +202,22 @@ namespace Server
 
                     jsonP1.hp = newHp1;//aggiorno la vita del pokemon nel json del server
 
-                    string JSONoutput = JsonConvert.SerializeObject(Turno);
-
-                    Sessions.Broadcast(JSONoutput);
+                    Turno.Turno = 1;
                 }
+
+                if (jsonP1.hp<=0)
+                {
+                    Turno.info += "PLAYER 2 HA VINTOOOOO\nInsersci un nuovo pokemon per una nuova partita\n";
+                    Turno.readyEnabled = true;
+                }
+                if(jsonP2.hp <= 0)
+                {
+                    Turno.info += "PLAYER 1 HA VINTOOOOO\nInsersci un nuovo pokemon per una nuova partita\n";
+                    Turno.readyEnabled = true;
+                }
+
+                JSONoutput = JsonConvert.SerializeObject(Turno);
+                Sessions.Broadcast(JSONoutput);
             }
         }
 

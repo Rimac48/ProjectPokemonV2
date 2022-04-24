@@ -27,8 +27,15 @@ namespace Client
 
         bool Connesso = false;
 
+        bool PlayerIDreceived = false;
+
         int PlayerID;
+
         Pokemon _jsonPokemon = new Pokemon();//il mio pokemon
+
+        int nMosse;
+
+        bool inserimentoErrato;
 
         Mossa infoMossabtn1 = new Mossa();
         Mossa infoMossabtn2 = new Mossa();
@@ -38,39 +45,63 @@ namespace Client
         public MainWindow()
         {
             InitializeComponent();
+
             Connesso2.Text = "Non Connesso";
             Connesso2.Background = System.Windows.Media.Brushes.Red;
             btnReady.IsEnabled = false;
-            DisabilitaChat();
-            DisabilitaAttacco();
+            AbilitaDisabilitaChat(false);
+            AbilitaDisabilitaPulsantiAttacco();
 
         }
 
-        public void DisabilitaChat()
+        public void AbilitaDisabilitaChat(bool onoff)
         {
-            StatoBattaglia.IsEnabled = false;
-            Invia.IsEnabled = false;
+            Invia.IsEnabled = onoff;
         }
         public void AbilitaChat()
         {
             StatoBattaglia.IsEnabled = true;
             Invia.IsEnabled = true;
         }
-        public void DisabilitaAttacco()
+        public void AbilitaDisabilitaPulsantiAttacco()//se non passo nessuna variabile,disattivo TUTTI i pulsanti
         {
             btnAttack1.IsEnabled = false;
             btnAttack2.IsEnabled = false;
             btnAttack3.IsEnabled = false;
             btnAttack4.IsEnabled = false;
         }
-        public void AbilitaAttacco()
-        {
-            btnAttack1.IsEnabled = true;
-            btnAttack2.IsEnabled = true;
-            btnAttack3.IsEnabled = true;
-            btnAttack4.IsEnabled = true;
-        }
 
+        public void AbilitaDisabilitaPulsantiAttacco(bool onoff) //variabile da impostare su True se si vogliono abilitare i pulsanti, False per disabilitarli
+        {
+            if (nMosse >= 1)
+            {
+                Dispatcher.Invoke(() =>
+                {
+                    btnAttack1.IsEnabled = onoff;
+                });
+            }
+            if (nMosse >= 2)
+            {
+                Dispatcher.Invoke(() =>
+                {
+                    btnAttack2.IsEnabled = onoff;
+                });
+            }
+            if (nMosse >= 3)
+            {
+                Dispatcher.Invoke(() =>
+                {
+                    btnAttack3.IsEnabled = onoff;
+                });
+            }
+            if (nMosse == 4)
+            {
+                Dispatcher.Invoke(() =>
+                {
+                    btnAttack4.IsEnabled = onoff;
+                });
+            }
+        }
 
         private void Connettiti_clicked(object sender, RoutedEventArgs e)
         {
@@ -99,7 +130,39 @@ namespace Client
 
             if (comunicazione.method == "InfoConnessione")
             {
-                PlayerID = comunicazione.clientID;
+                if (PlayerIDreceived == false)//se non ho un ID prendo quello che mi da il server
+                {
+                    PlayerID = comunicazione.clientID;
+                    PlayerIDreceived = true;
+                }
+
+                if (comunicazione.readyEnabled == true)
+                {
+                    Dispatcher.Invoke(() =>
+                    {
+                        btnReady.IsEnabled = true;
+                    });
+                }
+                else
+                {
+                    Dispatcher.Invoke(() =>
+                    {
+                        btnReady.IsEnabled = false;
+                    });
+                }
+
+                if(comunicazione.chatEnabled == true)
+                {
+                    Dispatcher.Invoke(() =>
+                    {
+                        AbilitaDisabilitaChat(true);
+                    });
+                }
+                
+                if(comunicazione.Turno == PlayerID && comunicazione.statoPartita == true)
+                {
+                    AbilitaDisabilitaPulsantiAttacco(true);
+                }
 
                 Dispatcher.Invoke(() =>
                 {
@@ -107,8 +170,6 @@ namespace Client
                     myPLayerID.Content = $"Player {comunicazione.clientID}";
                     Connesso2.Text = "Connesso";
                     Connesso2.Background = System.Windows.Media.Brushes.Green;
-                    btnReady.IsEnabled = true;
-
                 });
             }
 
@@ -140,8 +201,6 @@ namespace Client
             //gestisco il refresh dei dati dopo aver subito i danni
             if (comunicazione.method == "UpdateDati")
             {
-                //aggiorno la vita del mio pokemon nel json
-
                 ThreadStart tshp = new ThreadStart(() =>
                 {
                     Dispatcher.Invoke(DispatcherPriority.Normal, new Action(() =>
@@ -157,7 +216,17 @@ namespace Client
                             HpP1.Content = comunicazione.hpP2;
                             HpP2.Content = comunicazione.hpP1;
                         }
-                        
+
+                        if (comunicazione.Turno == PlayerID)
+                        {
+                            AbilitaDisabilitaPulsantiAttacco(true);
+                        }
+
+                        if (comunicazione.readyEnabled==true)
+                        {
+                            btnReady.IsEnabled = true;
+                        }
+
                     }));
                 });
                 Thread myThread = new Thread(tshp);
@@ -179,6 +248,8 @@ namespace Client
             string JSONoutput = JsonConvert.SerializeObject(Turno);
 
             socketserver.Send(JSONoutput);
+
+            AbilitaDisabilitaPulsantiAttacco(false);
         }
 
         private void btnAttack2_Click(object sender, RoutedEventArgs e)
@@ -196,6 +267,8 @@ namespace Client
             string JSONoutput = JsonConvert.SerializeObject(Turno);
 
             socketserver.Send(JSONoutput);
+
+            AbilitaDisabilitaPulsantiAttacco(false);
         }
 
         private void btnAttack3_Click(object sender, RoutedEventArgs e)
@@ -212,6 +285,8 @@ namespace Client
             string JSONoutput = JsonConvert.SerializeObject(Turno);
 
             socketserver.Send(JSONoutput);
+
+            AbilitaDisabilitaPulsantiAttacco(false);
         }
 
         private void btnAttack4_Click(object sender, RoutedEventArgs e)
@@ -228,22 +303,37 @@ namespace Client
             string JSONoutput = JsonConvert.SerializeObject(Turno);
 
             socketserver.Send(JSONoutput);
+
+            AbilitaDisabilitaPulsantiAttacco(false);
         }
 
         private void btnReady_Click(object sender, RoutedEventArgs e)
         {
-            CaricaPokemon();
+            if(TextBoxNomePokemon.Text == "Nome Pokemon" || TextBoxNomePokemon.Text == "")
+            {
+                Dispatcher.Invoke(() =>
+                {
+                    StatoBattaglia.Text += $"Inserisci un Pokemon!\n";
+                });
+            }
+            else
+            {
+                CaricaPokemon();
 
-            Comunicazione comunicazione = new Comunicazione(); //info comunicazioneù
-            comunicazione.method = "SceltaPokemon";
-            comunicazione.clientID = PlayerID;
-            comunicazione.info = TextBoxNomePokemon.Text;
-            comunicazione.mypokemon = _jsonPokemon;
+                if (inserimentoErrato == false)
+                {
+                    Comunicazione comunicazione = new Comunicazione(); //info comunicazioneù
+                    comunicazione.method = "SceltaPokemon";
+                    comunicazione.clientID = PlayerID;
+                    comunicazione.info = TextBoxNomePokemon.Text;
+                    comunicazione.mypokemon = _jsonPokemon;
 
-            string JSONoutput = JsonConvert.SerializeObject(comunicazione);
-            //creo un ciclo per l'invio di più messaggi consecutivi al Server
+                    string JSONoutput = JsonConvert.SerializeObject(comunicazione);
+                    //creo un ciclo per l'invio di più messaggi consecutivi al Server
 
-            socketserver.Send(JSONoutput);
+                    socketserver.Send(JSONoutput);
+                }
+            }
         }
 
         private void CaricaPokemon()
@@ -254,84 +344,97 @@ namespace Client
 
             var getResult = client.GetAsync(endpoint).Result;
 
-            var getResultJson = getResult.Content.ReadAsStringAsync().Result;
-
-            Pokemon jsonObjectInfo = JsonConvert.DeserializeObject<Pokemon>(getResultJson);
-
-            _jsonPokemon = jsonObjectInfo;
-
-            //Caricamento delle immagini
-            BitmapImage bitmap = new BitmapImage();
-            BitmapImage bitmap2 = new BitmapImage();
-            BitmapImage bitmap3 = new BitmapImage();
-
-            bitmap.BeginInit();
-            bitmap.UriSource = new Uri($"https://courses.cs.washington.edu/courses/cse154/webservices/pokedex/" + _jsonPokemon.images.photo);
-            bitmap.EndInit();
-            
-            bitmap2.BeginInit();
-            bitmap2.UriSource = new Uri($"https://courses.cs.washington.edu/courses/cse154/webservices/pokedex/" + _jsonPokemon.images.typeIcon);
-            bitmap2.EndInit();
-
-            bitmap3.BeginInit();
-            bitmap3.UriSource = new Uri($"https://courses.cs.washington.edu/courses/cse154/webservices/pokedex/" + _jsonPokemon.images.weaknessIcon);
-            bitmap3.EndInit();
-
-            Dispatcher.Invoke(() =>
-            {
-                imgPokemonP1.Source = bitmap;
-                ImgTypeP1.Source = bitmap2;
-                ImgWeaknessP1.Source = bitmap3;
-                HpP1.Content = _jsonPokemon.hp;
-            });
-
-            if (_jsonPokemon.moves.Count() == 1)
+            if(getResult.IsSuccessStatusCode==false)
             {
                 Dispatcher.Invoke(() =>
                 {
-                    btnAttack1.Content = _jsonPokemon.moves[0].name;
-                    btnAttack2.IsEnabled = false;
-                    btnAttack3.IsEnabled = false;
-                    btnAttack4.IsEnabled = false;
+                    StatoBattaglia.Text += $"Inserisci un pokemon 1ª Gen (compreso tra i primi 151)!\n";
+                    inserimentoErrato = true;
                 });
-                CaricaMossaPulsante(1,_jsonPokemon);
             }
-
-            if (_jsonPokemon.moves.Count() == 2)
+            else
             {
+                inserimentoErrato = false;
+                var getResultJson = getResult.Content.ReadAsStringAsync().Result;
+
+                Pokemon jsonObjectInfo = JsonConvert.DeserializeObject<Pokemon>(getResultJson);
+
+                _jsonPokemon = jsonObjectInfo;
+
+                //Caricamento delle immagini
+                BitmapImage bitmap = new BitmapImage();
+                BitmapImage bitmap2 = new BitmapImage();
+                BitmapImage bitmap3 = new BitmapImage();
+
+                bitmap.BeginInit();
+                bitmap.UriSource = new Uri($"https://courses.cs.washington.edu/courses/cse154/webservices/pokedex/" + _jsonPokemon.images.photo);
+                bitmap.EndInit();
+
+                bitmap2.BeginInit();
+                bitmap2.UriSource = new Uri($"https://courses.cs.washington.edu/courses/cse154/webservices/pokedex/" + _jsonPokemon.images.typeIcon);
+                bitmap2.EndInit();
+
+                bitmap3.BeginInit();
+                bitmap3.UriSource = new Uri($"https://courses.cs.washington.edu/courses/cse154/webservices/pokedex/" + _jsonPokemon.images.weaknessIcon);
+                bitmap3.EndInit();
+
                 Dispatcher.Invoke(() =>
                 {
-                    btnAttack1.Content = _jsonPokemon.moves[0].name;
-                    btnAttack2.Content = _jsonPokemon.moves[1].name;
-                    btnAttack3.IsEnabled = false;
-                    btnAttack4.IsEnabled = false;
+                    imgPokemonP1.Source = bitmap;
+                    ImgTypeP1.Source = bitmap2;
+                    ImgWeaknessP1.Source = bitmap3;
+                    HpP1.Content = _jsonPokemon.hp;
                 });
-                CaricaMossaPulsante(2, _jsonPokemon);
-            }
-            if (_jsonPokemon.moves.Count() == 3)
-            {
-                Dispatcher.Invoke(() =>
-                {
-                    btnAttack1.Content = _jsonPokemon.moves[0].name;
-                    btnAttack2.Content = _jsonPokemon.moves[1].name;
-                    btnAttack3.Content = _jsonPokemon.moves[2].name;
-                    btnAttack4.IsEnabled = false;
-                });
-                CaricaMossaPulsante(3, _jsonPokemon);
-            }
 
-            if (_jsonPokemon.moves.Count() == 4)
-            {
-                Dispatcher.Invoke(() =>
-                {
-                    btnAttack1.Content = _jsonPokemon.moves[0].name;
-                    btnAttack2.Content = _jsonPokemon.moves[1].name;
-                    btnAttack3.Content = _jsonPokemon.moves[2].name;
-                    btnAttack4.Content = _jsonPokemon.moves[3].name;
-                });
-                CaricaMossaPulsante(4, _jsonPokemon);
-            }
+                nMosse = _jsonPokemon.moves.Count();
 
+                if (nMosse == 1)
+                {
+                    Dispatcher.Invoke(() =>
+                    {
+                        btnAttack1.Content = _jsonPokemon.moves[0].name;
+                        btnAttack2.IsEnabled = false;
+                        btnAttack3.IsEnabled = false;
+                        btnAttack4.IsEnabled = false;
+                    });
+                    CaricaMossaPulsante(1, _jsonPokemon);
+                }
+
+                if (nMosse == 2)
+                {
+                    Dispatcher.Invoke(() =>
+                    {
+                        btnAttack1.Content = _jsonPokemon.moves[0].name;
+                        btnAttack2.Content = _jsonPokemon.moves[1].name;
+                        btnAttack3.IsEnabled = false;
+                        btnAttack4.IsEnabled = false;
+                    });
+                    CaricaMossaPulsante(2, _jsonPokemon);
+                }
+                if (nMosse == 3)
+                {
+                    Dispatcher.Invoke(() =>
+                    {
+                        btnAttack1.Content = _jsonPokemon.moves[0].name;
+                        btnAttack2.Content = _jsonPokemon.moves[1].name;
+                        btnAttack3.Content = _jsonPokemon.moves[2].name;
+                        btnAttack4.IsEnabled = false;
+                    });
+                    CaricaMossaPulsante(3, _jsonPokemon);
+                }
+
+                if (nMosse == 4)
+                {
+                    Dispatcher.Invoke(() =>
+                    {
+                        btnAttack1.Content = _jsonPokemon.moves[0].name;
+                        btnAttack2.Content = _jsonPokemon.moves[1].name;
+                        btnAttack3.Content = _jsonPokemon.moves[2].name;
+                        btnAttack4.Content = _jsonPokemon.moves[3].name;
+                    });
+                    CaricaMossaPulsante(4, _jsonPokemon);
+                }
+            }
         }
 
         //carico le info delle mosse nei rispettivi pulsanti

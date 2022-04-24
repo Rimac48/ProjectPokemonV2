@@ -12,9 +12,11 @@ namespace Server.Models
         public string method { get; set; }
         public string info { get; set; }
         public bool statoPartita { get; set; }
+        public bool readyEnabled { get; set; }
+        public bool chatEnabled { get; set; }
         public Pokemon mypokemon { get; set; }
 
-        public bool Turno { get; set; }
+        public int Turno { get; set; }
 
         public int hpP1 { get; set; }
         public int hpP2 { get; set; }

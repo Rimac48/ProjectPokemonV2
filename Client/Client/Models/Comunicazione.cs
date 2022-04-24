@@ -12,9 +12,11 @@ namespace Client.Models
         public string method { get; set; }
         public string info { get; set; }
         public bool statoPartita { get; set; }
+        public bool readyEnabled { get; set; }
+        public bool chatEnabled { get; set; }
         public Pokemon mypokemon { get; set; }
 
-        public bool turno { get; set; }
+        public int Turno { get; set; }
 
         public int hpP1 { get; set; }
         public int hpP2 { get; set; }
@@ -25,17 +27,17 @@ namespace Client.Models
 
     }
 
-    public class Attacco
-    {
-        public string? name { get; set; }
-        public int? dp { get; set; }
-        public string? type { get; set; }
+    //public class Attacco
+    //{
+    //    public string? name { get; set; }
+    //    public int? dp { get; set; }
+    //    public string? type { get; set; }
 
-        public Attacco()
-        {
-            name = "vuoto";
-            dp = 0;
-            type = "vuoto";
-        }
-    }
+    //    public Attacco()
+    //    {
+    //        name = "vuoto";
+    //        dp = 0;
+    //        type = "vuoto";
+    //    }
+    //}
 }
