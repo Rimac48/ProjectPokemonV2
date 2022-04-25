@@ -33,10 +33,8 @@ namespace Server
 
         private static bool statoPartita;
 
-        /// <summary>
-        /// GESTIRE System.IO.IOException per lo scollegamento di un client o crash?
-        /// </summary>
-
+        //Quando accendo il server finisco qui
+        //Qui gestisco il collegamento dei client e gli fornisco i dati di connessione
         protected override void OnOpen()
         {
             Comunicazione comunicazione = new Comunicazione(); //info comunicazione
@@ -85,11 +83,14 @@ namespace Server
                 Sessions.Broadcast(JSONoutput);
             }    
         }
+
+        //Qui ricevo tutti i messaggi che poi andrò a gestire tramite il metodo al suo interno
         protected override void OnMessage(MessageEventArgs e)
         {
             AnalizzaJson(e);
         }
 
+        //se i giocatori reinseriscono i pokemon dopo la fine della partita, resetto i dati e ne cominicio una nuova 
         private void ResetPartita()
         {
             statoPartita = false;
@@ -105,6 +106,7 @@ namespace Server
             Sessions.Broadcast(JSONoutput);
         }
 
+        //Qui gestisco tutti i mesaggi json ricevuti dal client
         private void AnalizzaJson(MessageEventArgs e)
         {
             Comunicazione comunicazione = new Comunicazione(); //info comunicazione
@@ -115,9 +117,10 @@ namespace Server
 
             Console.WriteLine($"client {comunicazione.clientID}: " + e.Data);
 
+            //Qui ricevo i pokemon dei giocatori e mando i pokemon ai risoettivi avversari
             if (comunicazione.method == "SceltaPokemon")
             {
-                if(statoPartita==true)// vuol dire che sonon nella partita numero 2
+                if(statoPartita==true)// vuol dire che sonon nella partita successiva
                 {
                     ResetPartita();
                 }
@@ -135,7 +138,7 @@ namespace Server
                     P2ready = true;
                 }
 
-                if (P1ready == true && P2ready == true)
+                if (P1ready == true && P2ready == true)//se i giocatori sono pronti, starto la partita e dico chi comincia per primo
                 {
                     Comunicazione newcomunicazione = new Comunicazione(); //info comunicazione
 
@@ -156,63 +159,95 @@ namespace Server
             //scambio i messaggi della chat tra i giocatori
             if (comunicazione.method == "Chat")
             {
-                //invio ad un client i messaggi dell'altro
-                if (Context.WebSocket == Player1)
-                {
-                    _clientSockets[1].Send(e.Data);
-                }
-                else
-                {
-                    _clientSockets[0].Send(e.Data);
-                }
+                Sessions.Broadcast(e.Data);
             }
 
+            //Qui ricevo le mosse dei giocatori, che siano attacchi o altro (pozioni)
             if (comunicazione.method == "Turno")
             {
                 Comunicazione Turno = new Comunicazione(); //info comunicazione
 
-                int newHp1;
-                int newHp2;
+                int newHp1=0;
+                int newHp2=0;
                 string JSONoutput;
+                Random missed = new Random();
 
-                //invio ad un client i messaggi dell'altro
+                Turno.method = "UpdateDati";
+
+
                 if (Context.WebSocket == _clientSockets[0])
                 {
-                    newHp2 = CalcolaDanni(1, comunicazione);
+                    //se uso un'item
+                    if(comunicazione.atktype == "Item")
+                    {
+                        if (comunicazione.atkname == "SimplePotion")
+                        {
+                            newHp1 = jsonP1.hp + 40;
+                            Turno.info = comunicazione.info;
+                            Turno.hpP1 = newHp1;
+                            Turno.hpP2 = jsonP2.hp;
+                            jsonP1.hp = newHp1;
+                        }
+                    }
 
-                    Turno.method = "UpdateDati";
-                    Turno.info = comunicazione.info;
-
-                    Turno.hpP2 = newHp2;
-                    Turno.hpP1 = jsonP1.hp;
-
-                    jsonP2.hp = newHp2;//aggiorno la vita del pokemon nel json del server
+                    //altrimenti è un'attacco
+                    else if(missed.Next(0, 11) == 0) //0=missed
+                    {
+                        Turno.info = "MANCATO! (┬┬﹏┬┬)";
+                        Turno.hpP1 = jsonP1.hp;
+                        Turno.hpP2 = jsonP2.hp;
+                    }
+                    else //0 = hit
+                    {
+                        newHp2 = CalcolaDanni(1, comunicazione);
+                        Turno.info = comunicazione.info;
+                        Turno.hpP2 = newHp2;
+                        Turno.hpP1 = jsonP1.hp;
+                        jsonP2.hp = newHp2;//aggiorno la vita del pokemon nel json del server
+                    }
 
                     Turno.Turno = 2;
                 }
+
                 else
                 {
-                    newHp1 = CalcolaDanni(2, comunicazione);
-
-                    Turno.method = "UpdateDati";
-                    Turno.info = comunicazione.info;
-
-                    Turno.hpP1 = newHp1;
-                    Turno.hpP2 = jsonP2.hp;
-
-                    jsonP1.hp = newHp1;//aggiorno la vita del pokemon nel json del server
+                    if (comunicazione.atktype == "Item")
+                    {
+                        if (comunicazione.atkname == "SimplePotion")
+                        {
+                            newHp2 = jsonP2.hp + 40;
+                            Turno.info = comunicazione.info;
+                            Turno.hpP1 = jsonP1.hp;
+                            Turno.hpP2 = newHp2;
+                            jsonP2.hp = newHp2;
+                        }
+                    }
+                    else if (missed.Next(0, 11) == 0)// 0=hit 1=missed
+                    {
+                        Turno.info = "MANCATO! (┬┬﹏┬┬)";
+                        Turno.hpP1 = jsonP2.hp;
+                        Turno.hpP2 = jsonP2.hp;
+                    }
+                    else
+                    {
+                        newHp1 = CalcolaDanni(2, comunicazione);
+                        Turno.info = comunicazione.info;
+                        Turno.hpP2 = jsonP2.hp;
+                        Turno.hpP1 = newHp1;
+                        jsonP1.hp = newHp1;//aggiorno la vita del pokemon nel json del server
+                    }
 
                     Turno.Turno = 1;
-                }
+                }            
 
                 if (jsonP1.hp<=0)
                 {
-                    Turno.info += "PLAYER 2 HA VINTOOOOO\nInsersci un nuovo pokemon per una nuova partita\n";
+                    Turno.info += "PLAYER 2 HA VINTOOOOO\n☆*:o(≧▽≦)o:*☆\nInsersci un nuovo pokemon per una nuova partita\n";
                     Turno.readyEnabled = true;
                 }
                 if(jsonP2.hp <= 0)
                 {
-                    Turno.info += "PLAYER 1 HA VINTOOOOO\nInsersci un nuovo pokemon per una nuova partita\n";
+                    Turno.info += "PLAYER 1 HA VINTOOOOO\n☆*:o(≧▽≦)o:*☆\nInsersci un nuovo pokemon per una nuova partita\n";
                     Turno.readyEnabled = true;
                 }
 
@@ -221,11 +256,13 @@ namespace Server
             }
         }
 
+        //MEDOTO PER IL CALCOLO DEL DANNO INFLITTO
         private int CalcolaDanni(int idPlayerAttack,Comunicazione comunicazione)
         {
             //se ad attaccare è il Player1
             //allora hpPlayer2 - Danni da Player1
-            if (idPlayerAttack==1)
+
+            if (idPlayerAttack == 1)
             {
                 int hpP2 = jsonP2.hp - comunicazione.atkdp;
                 return hpP2;
@@ -235,7 +272,7 @@ namespace Server
             {
                 int hpP1 = jsonP1.hp - comunicazione.atkdp;
                 return hpP1;
-            } 
+            }
         }
     }
 
@@ -243,7 +280,8 @@ namespace Server
     {
         static void Main(string[] args)
         {
-            //Attivo un server con 3 servizi attivi: Echo;EchoAll;PrivateChat
+            //Attivo un server con il servizio di gioco
+
             WebSocketServer wssv = new WebSocketServer("ws://127.0.0.1:9000");
 
             wssv.AddWebSocketService<Game>("/Game");

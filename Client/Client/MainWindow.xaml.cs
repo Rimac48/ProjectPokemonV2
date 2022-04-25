@@ -42,7 +42,7 @@ namespace Client
         Mossa infoMossabtn3 = new Mossa();
         Mossa infoMossabtn4 = new Mossa();
 
-        public MainWindow()
+        public MainWindow()//caricamenti iniziali con disattivazione di alcuni elementi a schermo
         {
             InitializeComponent();
 
@@ -51,18 +51,13 @@ namespace Client
             btnReady.IsEnabled = false;
             AbilitaDisabilitaChat(false);
             AbilitaDisabilitaPulsantiAttacco();
-
         }
 
-        public void AbilitaDisabilitaChat(bool onoff)
+        public void AbilitaDisabilitaChat(bool onoff)//metodo per attivare o disattivare la chat
         {
             Invia.IsEnabled = onoff;
         }
-        public void AbilitaChat()
-        {
-            StatoBattaglia.IsEnabled = true;
-            Invia.IsEnabled = true;
-        }
+
         public void AbilitaDisabilitaPulsantiAttacco()//se non passo nessuna variabile,disattivo TUTTI i pulsanti
         {
             btnAttack1.IsEnabled = false;
@@ -103,14 +98,14 @@ namespace Client
             }
         }
 
-        private void Connettiti_clicked(object sender, RoutedEventArgs e)
+        private void Connettiti_clicked(object sender, RoutedEventArgs e) //pulsante per la connessione
         {
             Connessione();
         }
-        private void Connessione()
+
+        private void Connessione() //metodo di connessione al server
         {
             WebSocket wsServer = new WebSocket("ws://127.0.0.1:9000/Game");
-
             socketserver = wsServer;
 
             wsServer.OnMessage += Ws_OnMessage;
@@ -118,25 +113,32 @@ namespace Client
             Connesso = true;
         }
 
-        private void Ws_OnMessage(object sender, MessageEventArgs e)
+        private void Ws_OnMessage(object sender, MessageEventArgs e)//quando ricevo un messaggio mengo qui e analizzo il json
         {
             AnalizzaJson(e);
         }
 
-        private void AnalizzaJson(MessageEventArgs e)
+        private void AnalizzaJson(MessageEventArgs e)//ogni messaggio json viene gestito qui
         {
             Comunicazione comunicazione = new Comunicazione(); //info comunicazione
             comunicazione = JsonConvert.DeserializeObject<Comunicazione>(e.Data);
 
+            //la gestione dei json avviene tramite metodo 
+            
+            //qui se ricevo informazioni importanti di connessione dal server
             if (comunicazione.method == "InfoConnessione")
             {
                 if (PlayerIDreceived == false)//se non ho un ID prendo quello che mi da il server
                 {
                     PlayerID = comunicazione.clientID;
                     PlayerIDreceived = true;
+                    Dispatcher.Invoke(() =>
+                    {
+                        myPLayerID.Content = $"Player {PlayerID}";
+                    });
                 }
 
-                if (comunicazione.readyEnabled == true)
+                if (comunicazione.readyEnabled == true)//se tutti i client sono connessi il server mi da l'ok per scegliere il pokemon e quindi abilito il pulsante
                 {
                     Dispatcher.Invoke(() =>
                     {
@@ -151,7 +153,7 @@ namespace Client
                     });
                 }
 
-                if(comunicazione.chatEnabled == true)
+                if(comunicazione.chatEnabled == true)//se tutti i client sono connessi il server mi da l'ok per scegliere il pokemon e quindi abilito il pulsante
                 {
                     Dispatcher.Invoke(() =>
                     {
@@ -159,7 +161,7 @@ namespace Client
                     });
                 }
                 
-                if(comunicazione.Turno == PlayerID && comunicazione.statoPartita == true)
+                if(comunicazione.Turno == PlayerID && comunicazione.statoPartita == true) //il server mi risponde con il giocatore che inizia per primo e se la partita è effettivamente cominciata, abilito i pulsanti di attacco
                 {
                     AbilitaDisabilitaPulsantiAttacco(true);
                 }
@@ -167,13 +169,13 @@ namespace Client
                 Dispatcher.Invoke(() =>
                 {
                     StatoBattaglia.Text = comunicazione.info;
-                    myPLayerID.Content = $"Player {comunicazione.clientID}";
                     Connesso2.Text = "Connesso";
                     Connesso2.Background = System.Windows.Media.Brushes.Green;
                 });
             }
 
-            if (comunicazione.method == "Chat")
+            //qui se ricevo un messaggio della chat
+            if (comunicazione.method == "Chat")//qui se ricevo un messaggio della chat
             {
                 Dispatcher.Invoke(() =>
                 {
@@ -182,6 +184,7 @@ namespace Client
 
             }
 
+            //qui quando ricevo il nome del pokemon avversario, in modo da caricare i suoi dati
             if (comunicazione.method == "SceltaPokemon")
             {
                 string pokemonAvversario = comunicazione.info;
@@ -197,8 +200,7 @@ namespace Client
                 myThread.Start();
             }
 
-
-            //gestisco il refresh dei dati dopo aver subito i danni
+            //gestisco il refresh dei dati dopo aver eventualmente subito danni i danni
             if (comunicazione.method == "UpdateDati")
             {
                 ThreadStart tshp = new ThreadStart(() =>
@@ -234,6 +236,8 @@ namespace Client
             }
         }
 
+
+        //PULSANTI PER ESEGUIRE GLI ATTACCHI
         private void btnAttack1_Click(object sender, RoutedEventArgs e)
         {
             Comunicazione Turno = new Comunicazione();
@@ -307,6 +311,32 @@ namespace Client
             AbilitaDisabilitaPulsantiAttacco(false);
         }
 
+        //PULSANTE PER USARE LA POZIONE DISPONIBILE
+        private void btnPotion_Click(object sender, RoutedEventArgs e)
+        {
+            Comunicazione Turno = new Comunicazione();
+            Turno.method = "Turno";
+            Turno.clientID = PlayerID;
+            Turno.info = $"Player{PlayerID} usa Pozione !\n";
+
+            Turno.atkname = "SimplePotion";
+            Turno.atktype = "Item";
+
+            string JSONoutput = JsonConvert.SerializeObject(Turno);
+
+            socketserver.Send(JSONoutput);
+
+            Dispatcher.Invoke(() =>
+            {
+                btnPotion.Content = "Pozione x0";
+                btnPotion.IsEnabled = false;
+            });
+
+            AbilitaDisabilitaPulsantiAttacco(false);
+
+        }
+
+        //PULSANTE PER INFORMARE IL SERVER CHE SONO PRONTO
         private void btnReady_Click(object sender, RoutedEventArgs e)
         {
             if(TextBoxNomePokemon.Text == "Nome Pokemon" || TextBoxNomePokemon.Text == "")
@@ -336,6 +366,23 @@ namespace Client
             }
         }
 
+        //PULSANTE PERE INVIARE I MESSAGGI IN CHAT
+        private void Invia_Click(object sender, RoutedEventArgs e)
+        {
+            Comunicazione comunicazione = new Comunicazione(); //info comunicazione
+
+            comunicazione.method = "Chat";
+            comunicazione.clientID = PlayerID;
+            comunicazione.info = Chat.Text;
+
+            string JSONoutput = JsonConvert.SerializeObject(comunicazione);
+            //creo un ciclo per l'invio di più messaggi consecutivi al Server
+
+            socketserver.Send(JSONoutput);
+
+        }
+
+        //METODO PER CARICARE dati,immagini,... del MIO POKEMON
         private void CaricaPokemon()
         {
             using var client = new HttpClient();
@@ -437,35 +484,7 @@ namespace Client
             }
         }
 
-        //carico le info delle mosse nei rispettivi pulsanti
-        private void CaricaMossaPulsante(int nPulsante, Pokemon json)
-        {
-            if (nPulsante >= 1)
-            {
-                infoMossabtn1.name = json.moves[0].name;
-                infoMossabtn1.dp = json.moves[0].dp;
-                infoMossabtn1.type = json.moves[0].type;
-            }
-            if (nPulsante >= 2)
-            {
-                infoMossabtn2.name = json.moves[1].name;
-                infoMossabtn2.dp = json.moves[1].dp;
-                infoMossabtn2.type = json.moves[1].type;
-            }
-            if (nPulsante >= 3)
-            {
-                infoMossabtn3.name = json.moves[2].name;
-                infoMossabtn3.dp = json.moves[2].dp;
-                infoMossabtn3.type = json.moves[2].type;
-            }
-            if (nPulsante == 4)
-            {
-                infoMossabtn4.name = json.moves[3].name;
-                infoMossabtn4.dp = json.moves[3].dp;
-                infoMossabtn4.type = json.moves[3].type;
-            }
-        }
-
+        //METODO PER CARICARE dati,immagini,... del POKEMON AVVERSARIO
         private void CaricaPokemonAvversario(string pokemon)//passo il nome del pokemon
         {
             using var client = new HttpClient();
@@ -506,6 +525,37 @@ namespace Client
             });
         }
 
+        //METODO PER CARICARE LE INFO DELLE MOSSE NEI RISPETTIVI PULSANTI
+        private void CaricaMossaPulsante(int nPulsante, Pokemon json)
+        {
+            if (nPulsante >= 1)
+            {
+                infoMossabtn1.name = json.moves[0].name;
+                infoMossabtn1.dp = json.moves[0].dp;
+                infoMossabtn1.type = json.moves[0].type;
+            }
+            if (nPulsante >= 2)
+            {
+                infoMossabtn2.name = json.moves[1].name;
+                infoMossabtn2.dp = json.moves[1].dp;
+                infoMossabtn2.type = json.moves[1].type;
+            }
+            if (nPulsante >= 3)
+            {
+                infoMossabtn3.name = json.moves[2].name;
+                infoMossabtn3.dp = json.moves[2].dp;
+                infoMossabtn3.type = json.moves[2].type;
+            }
+            if (nPulsante == 4)
+            {
+                infoMossabtn4.name = json.moves[3].name;
+                infoMossabtn4.dp = json.moves[3].dp;
+                infoMossabtn4.type = json.moves[3].type;
+            }
+        }
+
+
+
         private void Connesso2_TextChanged(object sender, TextChangedEventArgs e)
         {
 
@@ -516,22 +566,12 @@ namespace Client
 
         }
 
-        private void Invia_Click(object sender, RoutedEventArgs e)
+        private void StatoBattaglia_TextChanged(object sender, TextChangedEventArgs e)
         {
-            Comunicazione comunicazione = new Comunicazione(); //info comunicazione
-
-            comunicazione.method = "Chat";
-            comunicazione.clientID = PlayerID;
-            comunicazione.info = Chat.Text;
-
-            string JSONoutput = JsonConvert.SerializeObject(comunicazione);
-            //creo un ciclo per l'invio di più messaggi consecutivi al Server
-
-            socketserver.Send(JSONoutput);
 
         }
 
-        private void StatoBattaglia_TextChanged(object sender, TextChangedEventArgs e)
+        private void TextBoxNomePokemon_TextChanged(object sender, TextChangedEventArgs e)
         {
 
         }
