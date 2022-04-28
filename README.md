@@ -12,6 +12,10 @@
 link:
 https://courses.cs.washington.edu/courses/cse154/webservices/pokedex/
 
+l'API fornisce i Dati dei primi 151 Pokemon (Prima generazione)
+ovvero:
+![](https://i.imgur.com/WoehIAH.jpeg)
+
 ### Features
 
 le aggiungerò un'altro giorno, se siete curiosi, scaricate e provatele voi stessi (●'◡'●)
