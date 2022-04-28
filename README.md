@@ -19,3 +19,5 @@ ovvero:
 ### Features
 
 le aggiungerò un'altro giorno, se siete curiosi, scaricate e provatele voi stessi (●'◡'●)
+
+Coming soon v2.4 con miglioramento interfaccia OwO
