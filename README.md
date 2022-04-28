@@ -14,7 +14,7 @@ https://courses.cs.washington.edu/courses/cse154/webservices/pokedex/
 
 l'API fornisce i Dati dei primi 151 Pokemon (Prima generazione)
 ovvero:
-![](https://i.imgur.com/WoehIAH.jpeg)
+![](http://gizzeta.it/wp-content/uploads/2016/08/Lista-dei-Pokemon-di-prima-generazione.jpg)
 
 ### Features
 
