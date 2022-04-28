@@ -33,6 +33,8 @@ namespace Client
 
         Pokemon _jsonPokemon = new Pokemon();//il mio pokemon
 
+        bool pozioneUsed = false;
+
         int nMosse;
 
         bool inserimentoErrato;
@@ -49,6 +51,7 @@ namespace Client
             Connesso2.Text = "Non Connesso";
             Connesso2.Background = System.Windows.Media.Brushes.Red;
             btnReady.IsEnabled = false;
+            btnPotion.IsEnabled = false;
             AbilitaDisabilitaChat(false);
             AbilitaDisabilitaPulsantiAttacco();
         }
@@ -68,6 +71,22 @@ namespace Client
 
         public void AbilitaDisabilitaPulsantiAttacco(bool onoff) //variabile da impostare su True se si vogliono abilitare i pulsanti, False per disabilitarli
         {
+            if (pozioneUsed == true)
+            {
+                Dispatcher.Invoke(() =>
+                {
+                    btnPotion.IsEnabled = false;
+                });
+            } 
+            else
+            {
+                Dispatcher.Invoke(() =>
+                {
+                    btnPotion.IsEnabled = onoff;
+                });
+            }
+                
+
             if (nMosse >= 1)
             {
                 Dispatcher.Invoke(() =>
@@ -96,6 +115,15 @@ namespace Client
                     btnAttack4.IsEnabled = onoff;
                 });
             }
+        }
+
+        private void ResetPozione()
+        {
+            pozioneUsed = false;
+            Dispatcher.Invoke(() =>
+            {
+                btnPotion.Content = "Pozione x1";
+            });
         }
 
         private void Connettiti_clicked(object sender, RoutedEventArgs e) //pulsante per la connessione
@@ -159,6 +187,11 @@ namespace Client
                     {
                         AbilitaDisabilitaChat(true);
                     });
+                }
+
+                if (comunicazione.resetPozioni==true)
+                {
+                    ResetPozione();
                 }
                 
                 if(comunicazione.Turno == PlayerID && comunicazione.statoPartita == true) //il server mi risponde con il giocatore che inizia per primo e se la partita è effettivamente cominciata, abilito i pulsanti di attacco
@@ -227,6 +260,12 @@ namespace Client
                         if (comunicazione.readyEnabled==true)
                         {
                             btnReady.IsEnabled = true;
+                        }
+
+                        if (comunicazione.statoPartita == false)
+                        {
+                            AbilitaDisabilitaPulsantiAttacco(false);
+                            btnPotion.IsEnabled = false;
                         }
 
                     }));
@@ -311,6 +350,7 @@ namespace Client
             AbilitaDisabilitaPulsantiAttacco(false);
         }
 
+
         //PULSANTE PER USARE LA POZIONE DISPONIBILE
         private void btnPotion_Click(object sender, RoutedEventArgs e)
         {
@@ -332,6 +372,7 @@ namespace Client
                 btnPotion.IsEnabled = false;
             });
 
+            pozioneUsed = true;
             AbilitaDisabilitaPulsantiAttacco(false);
 
         }

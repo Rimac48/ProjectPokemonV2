@@ -101,6 +101,7 @@ namespace Server
 
             comunicazione.method = "InfoConnessione";
             comunicazione.readyEnabled = true;
+            comunicazione.resetPozioni = true;
 
             string JSONoutput = JsonConvert.SerializeObject(comunicazione);
             Sessions.Broadcast(JSONoutput);
@@ -173,6 +174,7 @@ namespace Server
                 Random missed = new Random();
 
                 Turno.method = "UpdateDati";
+                Turno.statoPartita = true;
 
 
                 if (Context.WebSocket == _clientSockets[0])
@@ -193,7 +195,7 @@ namespace Server
                     //altrimenti è un'attacco
                     else if(missed.Next(0, 11) == 0) //0=missed
                     {
-                        Turno.info = "MANCATO! (┬┬﹏┬┬)";
+                        Turno.info = "MANCATO! (┬┬﹏┬┬)\n";
                         Turno.hpP1 = jsonP1.hp;
                         Turno.hpP2 = jsonP2.hp;
                     }
@@ -224,8 +226,8 @@ namespace Server
                     }
                     else if (missed.Next(0, 11) == 0)// 0=hit 1=missed
                     {
-                        Turno.info = "MANCATO! (┬┬﹏┬┬)";
-                        Turno.hpP1 = jsonP2.hp;
+                        Turno.info = "MANCATO! (┬┬﹏┬┬)\n";
+                        Turno.hpP1 = jsonP1.hp;
                         Turno.hpP2 = jsonP2.hp;
                     }
                     else
@@ -244,11 +246,13 @@ namespace Server
                 {
                     Turno.info += "PLAYER 2 HA VINTOOOOO\n☆*:o(≧▽≦)o:*☆\nInsersci un nuovo pokemon per una nuova partita\n";
                     Turno.readyEnabled = true;
+                    Turno.statoPartita = false;
                 }
                 if(jsonP2.hp <= 0)
                 {
                     Turno.info += "PLAYER 1 HA VINTOOOOO\n☆*:o(≧▽≦)o:*☆\nInsersci un nuovo pokemon per una nuova partita\n";
                     Turno.readyEnabled = true;
+                    Turno.statoPartita = false;
                 }
 
                 JSONoutput = JsonConvert.SerializeObject(Turno);

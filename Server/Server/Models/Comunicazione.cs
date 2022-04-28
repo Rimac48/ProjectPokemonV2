@@ -11,8 +11,11 @@ namespace Server.Models
         public int clientID { get; set; }
         public string method { get; set; }
         public string info { get; set; }
+
         public bool statoPartita { get; set; }
+        public bool resetPozioni { get; set; }
         public bool readyEnabled { get; set; }
+
         public bool chatEnabled { get; set; }
         public Pokemon mypokemon { get; set; }
 
