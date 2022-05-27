@@ -31,3 +31,6 @@ le aggiungerò un'altro giorno, se siete curiosi, scaricate e provatele voi stes
 - WebSockets
 - Api / json
 - ProgressBar Syncfusion nuget packages
+
+# Problems
+Non gestita la disconnessione dei client
