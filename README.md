@@ -29,5 +29,5 @@ le aggiungerò un'altro giorno, se siete curiosi, scaricate e provatele voi stes
 # Tecnologie utilizzate
 - Wpf
 - WebSockets
-- Api
+- Api / json
 - ProgressBar Syncfusion nuget packages
